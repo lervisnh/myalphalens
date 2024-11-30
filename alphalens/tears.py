@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -22,19 +23,32 @@ from . import plotting
 from . import performance as perf
 from . import utils
 
+class OuputConfig(object):
+    __output_dir : str = ''
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def set_output_dir(output_dir : str = './'):
+        OuputConfig.__output_dir = output_dir
+
+    @staticmethod
+    def get_output_dir():
+        return OuputConfig.__output_dir
 
 class GridFigure(object):
     """
     It makes life easier with grid plots
     """
 
-    def __init__(self, rows, cols):
+    def __init__(self, rows, cols, output_file : str = ''):
         self.rows = rows
         self.cols = cols
         self.fig = plt.figure(figsize=(14, rows * 7))
         self.gs = gridspec.GridSpec(rows, cols, wspace=0.4, hspace=0.3)
         self.curr_row = 0
         self.curr_col = 0
+        self.output_file = output_file
 
     def next_row(self):
         if self.curr_col != 0:
@@ -53,6 +67,12 @@ class GridFigure(object):
         return subplt
 
     def close(self):
+        output_dir = OuputConfig.get_output_dir()
+        if output_dir and self.output_file:
+            if not os.path.exists(output_dir): os.makedirs(output_dir)
+            plt.savefig(output_dir + "/" + self.output_file)
+        else:
+            plt.show()
         plt.close(self.fig)
         self.fig = None
         self.gs = None
@@ -128,7 +148,7 @@ def create_summary_tear_sheet(
 
     fr_cols = len(periods)
     vertical_sections = 2 + fr_cols * 3
-    gf = GridFigure(rows=vertical_sections, cols=1)
+    gf = GridFigure(rows=vertical_sections, cols=1, output_file="summary.png")
 
     plotting.plot_quantile_statistics_table(factor_data)
 
@@ -171,7 +191,7 @@ def create_summary_tear_sheet(
 
     plotting.plot_turnover_table(autocorrelation, quantile_turnover)
 
-    plt.show()
+    # plt.show()
     gf.close()
 
 
@@ -250,7 +270,7 @@ def create_returns_tear_sheet(
 
     fr_cols = len(factor_returns.columns)
     vertical_sections = 2 + fr_cols * 3
-    gf = GridFigure(rows=vertical_sections, cols=1)
+    gf = GridFigure(rows=vertical_sections, cols=1, output_file="returns.png")
 
     plotting.plot_returns_table(
         alpha_beta, mean_quant_rateret, mean_ret_spread_quant
@@ -303,7 +323,7 @@ def create_returns_tear_sheet(
         ax=ax_mean_quantile_returns_spread_ts,
     )
 
-    plt.show()
+    # plt.show()
     gf.close()
 
     if by_group:
@@ -329,7 +349,7 @@ def create_returns_tear_sheet(
         )
 
         vertical_sections = 1 + (((num_groups - 1) // 2) + 1)
-        gf = GridFigure(rows=vertical_sections, cols=2)
+        gf = GridFigure(rows=vertical_sections, cols=2, output_file="returns_by_group.png")
 
         ax_quantile_returns_bar_by_group = [
             gf.next_cell() for _ in range(num_groups)
@@ -340,7 +360,7 @@ def create_returns_tear_sheet(
             ylim_percentiles=(5, 95),
             ax=ax_quantile_returns_bar_by_group,
         )
-        plt.show()
+        # plt.show()
         gf.close()
 
 
@@ -373,7 +393,7 @@ def create_information_tear_sheet(
     fr_cols = len(ic.columns)
     rows_when_wide = ((fr_cols - 1) // columns_wide) + 1
     vertical_sections = fr_cols + 3 * rows_when_wide + 2 * fr_cols
-    gf = GridFigure(rows=vertical_sections, cols=columns_wide)
+    gf = GridFigure(rows=vertical_sections, cols=columns_wide, output_file="information.png")
 
     ax_ic_ts = [gf.next_row() for _ in range(fr_cols)]
     plotting.plot_ic_ts(ic, ax=ax_ic_ts)
@@ -402,7 +422,7 @@ def create_information_tear_sheet(
 
         plotting.plot_ic_by_group(mean_group_ic, ax=gf.next_row())
 
-    plt.show()
+    # plt.show()
     gf.close()
 
 
@@ -465,7 +485,7 @@ def create_turnover_tear_sheet(factor_data, turnover_periods=None):
     columns_wide = 1
     rows_when_wide = ((fr_cols - 1) // 1) + 1
     vertical_sections = fr_cols + 3 * rows_when_wide + 2 * fr_cols
-    gf = GridFigure(rows=vertical_sections, cols=columns_wide)
+    gf = GridFigure(rows=vertical_sections, cols=columns_wide, output_file="turnover.png")
 
     for period in turnover_periods:
         if quantile_turnover[period].isnull().all().all():
@@ -481,7 +501,7 @@ def create_turnover_tear_sheet(factor_data, turnover_periods=None):
             autocorrelation[period], period=period, ax=gf.next_row()
         )
 
-    plt.show()
+    # plt.show()
     gf.close()
 
 
@@ -581,7 +601,7 @@ def create_event_returns_tear_sheet(factor_data,
     if std_bar:
         vertical_sections += ((num_quantiles - 1) // 2) + 1
     cols = 2 if num_quantiles != 1 else 1
-    gf = GridFigure(rows=vertical_sections, cols=cols)
+    gf = GridFigure(rows=vertical_sections, cols=cols, output_file="event_returns.png")
     plotting.plot_quantile_average_cumulative_return(
         avg_cumulative_returns,
         by_quantile=False,
@@ -599,14 +619,14 @@ def create_event_returns_tear_sheet(factor_data,
             ax=ax_avg_cumulative_returns_by_q,
         )
 
-    plt.show()
+    # plt.show()
     gf.close()
 
     if by_group:
         groups = factor_data["group"].unique()
         num_groups = len(groups)
         vertical_sections = ((num_groups - 1) // 2) + 1
-        gf = GridFigure(rows=vertical_sections, cols=2)
+        gf = GridFigure(rows=vertical_sections, cols=2, output_file="event_returns_by_group.png")
 
         avg_cumret_by_group = perf.average_cumulative_return_by_quantile(
             factor_data,
@@ -628,7 +648,7 @@ def create_event_returns_tear_sheet(factor_data,
                 ax=gf.next_cell(),
             )
 
-        plt.show()
+        # plt.show()
         gf.close()
 
 
@@ -667,11 +687,11 @@ def create_event_study_tear_sheet(factor_data,
 
     plotting.plot_quantile_statistics_table(factor_data)
 
-    gf = GridFigure(rows=1, cols=1)
+    gf = GridFigure(rows=1, cols=1, output_file="events_distribution.png")
     plotting.plot_events_distribution(
         events=factor_data["factor"], num_bars=n_bars, ax=gf.next_row()
     )
-    plt.show()
+    # plt.show()
     gf.close()
 
     if returns is not None and avgretplot is not None:
@@ -710,7 +730,7 @@ def create_event_study_tear_sheet(factor_data,
 
     fr_cols = len(factor_returns.columns)
     vertical_sections = 2 + fr_cols * 1
-    gf = GridFigure(rows=vertical_sections + 1, cols=1)
+    gf = GridFigure(rows=vertical_sections + 1, cols=1, output_file="event_factor_returns.png")
 
     plotting.plot_quantile_returns_bar(
         mean_quant_ret, by_group=False, ylim_percentiles=None, ax=gf.next_row()
@@ -728,5 +748,5 @@ def create_event_study_tear_sheet(factor_data,
             UserWarning,
         )
 
-    plt.show()
+    # plt.show()
     gf.close()
